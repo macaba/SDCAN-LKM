@@ -1,5 +1,5 @@
 # SDCAN-LKM
-Software Defined CAN - Loadable [Linux] Kernel Module
+Software Defined CAN - Loadable [Linux] Kernel Module for Raspberry Pi
 
 # Installation
 
