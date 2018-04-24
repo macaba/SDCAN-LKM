@@ -15,7 +15,7 @@ struct sdcan_priv {
 	struct can_priv	   can;
 	struct net_device *net;
 	struct spi_device *spi;
-	enum sdcan_model model;
+	//enum sdcan_model model;
 
 	struct mutex sdcan_lock; /* SPI device lock */
 
