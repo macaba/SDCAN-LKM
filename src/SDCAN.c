@@ -11,9 +11,37 @@ MODULE_AUTHOR("");                  ///< The author -- visible when you use modi
 MODULE_DESCRIPTION("SDCAN - Software Defined CAN");  ///< The description -- see modinfo
 MODULE_VERSION("0.1");              ///< The version of the module
 
-static char *name = "world";        ///< An example LKM argument -- default value is "world"
-module_param(name, charp, S_IRUGO); ///< Param desc. charp = char ptr, S_IRUGO can be read/not changed
-MODULE_PARM_DESC(name, "The name to display in /var/log/kern.log");  ///< parameter description
+struct sdcan_priv {
+	struct can_priv	   can;
+	struct net_device *net;
+	struct spi_device *spi;
+	enum sdcan_model model;
+
+	struct mutex sdcan_lock; /* SPI device lock */
+
+	u8 *spi_tx_buf;
+	u8 *spi_rx_buf;
+	dma_addr_t spi_tx_dma;
+	dma_addr_t spi_rx_dma;
+
+	struct sk_buff *tx_skb;
+	int tx_len;
+
+	struct workqueue_struct *wq;
+	struct work_struct tx_work;
+	struct work_struct restart_work;
+
+// 	int force_quit;
+// 	int after_suspend;
+// #define AFTER_SUSPEND_UP 1
+// #define AFTER_SUSPEND_DOWN 2
+// #define AFTER_SUSPEND_POWER 4
+// #define AFTER_SUSPEND_RESTART 8
+// 	int restart_tx;
+// 	struct regulator *power;
+// 	struct regulator *transceiver;
+// 	struct clk *clk;
+};
 
 static int sdcan_open(struct net_device *net){
 	return 0;

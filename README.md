@@ -20,3 +20,5 @@ Software Defined CAN - Loadable [Linux] Kernel Module for Raspberry Pi
 # Useful
 
 * sudo raspi-config (to enable SPI)
+* apt install hdparm
+* curl https://www.nmacleod.com/public/sdbench.sh | sudo bash
