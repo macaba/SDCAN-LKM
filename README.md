@@ -3,6 +3,8 @@ Software Defined CAN - Loadable [Linux] Kernel Module for Raspberry Pi
 
 # Installation
 
+* sudo apt-get update
+* sudo apt-get upgrade
 * sudo apt-get install raspberrypi-kernel-headers
 * sudo apt-get install git
 * cd /home/pi
@@ -14,3 +16,7 @@ Software Defined CAN - Loadable [Linux] Kernel Module for Raspberry Pi
 * modinfo helloWorld.ko
 * tail -f kern.log
 * sudo rmmod helloWorld.ko (to remove)
+
+# Useful
+
+* sudo raspi-config (to enable SPI)
