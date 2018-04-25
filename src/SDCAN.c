@@ -7,6 +7,8 @@
 #include <linux/can/led.h>
 #include <linux/spi/spi.h>
 
+#define DEVICE_NAME "sdcan"
+
 MODULE_LICENSE("GPL");              ///< The license type -- this affects runtime behavior
 MODULE_AUTHOR("");                  ///< The author -- visible when you use modinfo
 MODULE_DESCRIPTION("SDCAN - Software Defined CAN");  ///< The description -- see modinfo
@@ -162,10 +164,252 @@ static const struct net_device_ops sdcan_netdev_ops = {
 static const struct of_device_id sdcan_of_match[] = {
 	{
 		.compatible	= "sdcan",
-		.data		= (void *)0x0000,
+		.data		= (void *)0x0744,
 	},
-	{ },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, sdcan_of_match);
+
+static const struct spi_device_id sdcan_id_table[] = {
+	{
+		.name		= "sdcan",
+		.driver_data	= (kernel_ulong_t)0x0744,
+	},
+	{ }
+};
+MODULE_DEVICE_TABLE(spi, sdcan_id_table);
+
+static int sdcan_can_probe(struct spi_device *spi)
+{
+// 	const struct of_device_id *of_id = of_match_device(sdcan_of_match,
+// 							   &spi->dev);
+// 	struct sdcan_platform_data *pdata = dev_get_platdata(&spi->dev);
+// 	struct net_device *net;
+// 	struct sdcan_priv *priv;
+// 	struct clk *clk;
+// 	int freq, ret;
+
+// 	clk = devm_clk_get(&spi->dev, NULL);
+// 	if (IS_ERR(clk)) {
+// 		if (pdata)
+// 			freq = pdata->oscillator_frequency;
+// 		else
+// 			return PTR_ERR(clk);
+// 	} else {
+// 		freq = clk_get_rate(clk);
+// 	}
+
+// 	/* Sanity check */
+// 	if (freq < 1000000 || freq > 25000000)
+// 		return -ERANGE;
+
+// 	/* Allocate can/net device */
+// 	net = alloc_candev(sizeof(struct sdcan_priv), TX_ECHO_SKB_MAX);
+// 	if (!net)
+// 		return -ENOMEM;
+
+// 	if (!IS_ERR(clk)) {
+// 		ret = clk_prepare_enable(clk);
+// 		if (ret)
+// 			goto out_free;
+// 	}
+
+// 	net->netdev_ops = &sdcan_netdev_ops;
+// 	net->flags |= IFF_ECHO;
+
+// 	priv = netdev_priv(net);
+// 	priv->can.bittiming_const = &sdcan_bittiming_const;
+// 	priv->can.do_set_mode = sdcan_do_set_mode;
+// 	priv->can.clock.freq = freq / 2;
+// 	priv->can.ctrlmode_supported = CAN_CTRLMODE_3_SAMPLES |
+// 		CAN_CTRLMODE_LOOPBACK | CAN_CTRLMODE_LISTENONLY;
+// 	if (of_id)
+// 		priv->model = (enum sdcan_model)of_id->data;
+// 	else
+// 		priv->model = spi_get_device_id(spi)->driver_data;
+// 	priv->net = net;
+// 	priv->clk = clk;
+
+// 	spi_set_drvdata(spi, priv);
+
+// 	/* Configure the SPI bus */
+// 	spi->bits_per_word = 8;
+// 	if (sdcan_is_2510(spi))
+// 		spi->max_speed_hz = spi->max_speed_hz ? : 5 * 1000 * 1000;
+// 	else
+// 		spi->max_speed_hz = spi->max_speed_hz ? : 10 * 1000 * 1000;
+// 	ret = spi_setup(spi);
+// 	if (ret)
+// 		goto out_clk;
+
+// 	priv->power = devm_regulator_get_optional(&spi->dev, "vdd");
+// 	priv->transceiver = devm_regulator_get_optional(&spi->dev, "xceiver");
+// 	if ((PTR_ERR(priv->power) == -EPROBE_DEFER) ||
+// 	    (PTR_ERR(priv->transceiver) == -EPROBE_DEFER)) {
+// 		ret = -EPROBE_DEFER;
+// 		goto out_clk;
+// 	}
+
+// 	ret = sdcan_power_enable(priv->power, 1);
+// 	if (ret)
+// 		goto out_clk;
+
+// 	priv->spi = spi;
+// 	mutex_init(&priv->mcp_lock);
+
+// 	/* If requested, allocate DMA buffers */
+// 	if (sdcan_enable_dma) {
+// 		spi->dev.coherent_dma_mask = ~0;
+
+// 		/*
+// 		 * Minimum coherent DMA allocation is PAGE_SIZE, so allocate
+// 		 * that much and share it between Tx and Rx DMA buffers.
+// 		 */
+// 		priv->spi_tx_buf = dmam_alloc_coherent(&spi->dev,
+// 						       PAGE_SIZE,
+// 						       &priv->spi_tx_dma,
+// 						       GFP_DMA);
+
+// 		if (priv->spi_tx_buf) {
+// 			priv->spi_rx_buf = (priv->spi_tx_buf + (PAGE_SIZE / 2));
+// 			priv->spi_rx_dma = (dma_addr_t)(priv->spi_tx_dma +
+// 							(PAGE_SIZE / 2));
+// 		} else {
+// 			/* Fall back to non-DMA */
+// 			sdcan_enable_dma = 0;
+// 		}
+// 	}
+
+// 	/* Allocate non-DMA buffers */
+// 	if (!sdcan_enable_dma) {
+// 		priv->spi_tx_buf = devm_kzalloc(&spi->dev, SPI_TRANSFER_BUF_LEN,
+// 						GFP_KERNEL);
+// 		if (!priv->spi_tx_buf) {
+// 			ret = -ENOMEM;
+// 			goto error_probe;
+// 		}
+// 		priv->spi_rx_buf = devm_kzalloc(&spi->dev, SPI_TRANSFER_BUF_LEN,
+// 						GFP_KERNEL);
+// 		if (!priv->spi_rx_buf) {
+// 			ret = -ENOMEM;
+// 			goto error_probe;
+// 		}
+// 	}
+
+// 	SET_NETDEV_DEV(net, &spi->dev);
+
+// 	/* Here is OK to not lock the MCP, no one knows about it yet */
+// 	ret = sdcan_hw_probe(spi);
+// 	if (ret) {
+// 		if (ret == -ENODEV)
+// 			dev_err(&spi->dev, "Cannot initialize MCP%x. Wrong wiring?\n", priv->model);
+// 		goto error_probe;
+// 	}
+
+// 	sdcan_hw_sleep(spi);
+
+// 	ret = register_candev(net);
+// 	if (ret)
+// 		goto error_probe;
+
+// 	devm_can_led_init(net);
+
+// 	netdev_info(net, "MCP%x successfully initialized.\n", priv->model);
+ 	return 0;
+
+// error_probe:
+// 	sdcan_power_enable(priv->power, 0);
+
+// out_clk:
+// 	if (!IS_ERR(clk))
+// 		clk_disable_unprepare(clk);
+
+// out_free:
+// 	free_candev(net);
+
+// 	dev_err(&spi->dev, "Probe failed, err=%d\n", -ret);
+// 	return ret;
+}
+
+static int sdcan_can_remove(struct spi_device *spi)
+{
+	// struct sdcan_priv *priv = spi_get_drvdata(spi);
+	// struct net_device *net = priv->net;
+
+	// unregister_candev(net);
+
+	// sdcan_power_enable(priv->power, 0);
+
+	// if (!IS_ERR(priv->clk))
+	// 	clk_disable_unprepare(priv->clk);
+
+	// free_candev(net);
+
+	return 0;
+}
+
+static int __maybe_unused sdcan_can_suspend(struct device *dev)
+{
+	// struct spi_device *spi = to_spi_device(dev);
+	// struct sdcan_priv *priv = spi_get_drvdata(spi);
+	// struct net_device *net = priv->net;
+
+	// priv->force_quit = 1;
+	// disable_irq(spi->irq);
+	// /*
+	//  * Note: at this point neither IST nor workqueues are running.
+	//  * open/stop cannot be called anyway so locking is not needed
+	//  */
+	// if (netif_running(net)) {
+	// 	netif_device_detach(net);
+
+	// 	sdcan_hw_sleep(spi);
+	// 	sdcan_power_enable(priv->transceiver, 0);
+	// 	priv->after_suspend = AFTER_SUSPEND_UP;
+	// } else {
+	// 	priv->after_suspend = AFTER_SUSPEND_DOWN;
+	// }
+
+	// if (!IS_ERR_OR_NULL(priv->power)) {
+	// 	regulator_disable(priv->power);
+	// 	priv->after_suspend |= AFTER_SUSPEND_POWER;
+	// }
+
+	return 0;
+}
+
+static int __maybe_unused sdcan_can_resume(struct device *dev)
+{
+	// struct spi_device *spi = to_spi_device(dev);
+	// struct sdcan_priv *priv = spi_get_drvdata(spi);
+
+	// if (priv->after_suspend & AFTER_SUSPEND_POWER)
+	// 	sdcan_power_enable(priv->power, 1);
+
+	// if (priv->after_suspend & AFTER_SUSPEND_UP) {
+	// 	sdcan_power_enable(priv->transceiver, 1);
+	// 	queue_work(priv->wq, &priv->restart_work);
+	// } else {
+	// 	priv->after_suspend = 0;
+	// }
+
+	// priv->force_quit = 0;
+	// enable_irq(spi->irq);
+	return 0;
+}
+
+static SIMPLE_DEV_PM_OPS(sdcan_can_pm_ops, sdcan_can_suspend,
+	sdcan_can_resume);
+
+static struct spi_driver sdcan_can_driver = {
+	.driver = {
+		.name = DEVICE_NAME,
+		.of_match_table = sdcan_of_match,
+		.pm = &sdcan_can_pm_ops,
+	},
+	.id_table = sdcan_id_table,
+	.probe = sdcan_can_probe,
+	.remove = sdcan_can_remove,
+};
+module_spi_driver(sdcan_can_driver);
 

@@ -27,6 +27,8 @@ Software Defined CAN - Loadable [Linux] Kernel Module for Raspberry Pi
 * ls /sys/bus/spi/devices/spi0.0/net/can0/
 * sudo /sbin/ip link set can0 up type can bitrate 500000
 
+* /var/log/syslog
+
 # Useful
 
 * sudo raspi-config (to enable SPI)
