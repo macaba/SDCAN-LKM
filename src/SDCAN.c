@@ -193,6 +193,17 @@ static int sdcan_open(struct net_device *net){
 	return 0;
 }
 
+static int sdcan_power_enable(struct regulator *reg, int enable)
+{
+	if (IS_ERR_OR_NULL(reg))
+		return 0;
+
+	if (enable)
+		return regulator_enable(reg);
+	else
+		return regulator_disable(reg);
+}
+
 static int sdcan_stop(struct net_device *net){
 	printk(KERN_INFO "SDCAN Stop\n");
 	return 0;
@@ -322,7 +333,7 @@ static int sdcan_can_probe(struct spi_device *spi)
 		goto out_clk;
 
 	priv->spi = spi;
-	mutex_init(&priv->mcp_lock);
+	mutex_init(&priv->sdcan_lock);
 
 	/* If requested, allocate DMA buffers */
 	if (sdcan_enable_dma) {
