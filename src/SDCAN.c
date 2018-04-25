@@ -1,7 +1,7 @@
 #include <linux/can/core.h>
 #include <linux/can/dev.h>
 #include <linux/can/led.h>
-#include <linux/can/platform/mcp251x.h>
+//#include <linux/can/platform/mcp251x.h>
 #include <linux/clk.h>
 #include <linux/completion.h>
 #include <linux/delay.h>
@@ -206,7 +206,7 @@ static int sdcan_can_probe(struct spi_device *spi)
 {
 	const struct of_device_id *of_id = of_match_device(sdcan_of_match,
 							   &spi->dev);
-	struct sdcan_platform_data *pdata = dev_get_platdata(&spi->dev);
+	//struct sdcan_platform_data *pdata = dev_get_platdata(&spi->dev);
 	struct net_device *net;
 	struct sdcan_priv *priv;
 	struct clk *clk;
@@ -214,9 +214,9 @@ static int sdcan_can_probe(struct spi_device *spi)
 
 	clk = devm_clk_get(&spi->dev, NULL);
 	if (IS_ERR(clk)) {
-		if (pdata)
-			freq = pdata->oscillator_frequency;
-		else
+		//if (pdata)
+		//	freq = pdata->oscillator_frequency;
+		//else
 			return PTR_ERR(clk);
 	} else {
 		freq = clk_get_rate(clk);
