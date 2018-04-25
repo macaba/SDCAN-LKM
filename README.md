@@ -17,8 +17,12 @@ Software Defined CAN - Loadable [Linux] Kernel Module for Raspberry Pi
 * tail -f kern.log
 * sudo rmmod helloWorld.ko (to remove)
 
+* dtc -@ -I dts -O dtb -o sdcan-can0.dtbo sdcan-can0-overlay.dts
+* sudo cp sdcan-can0.dtbo /boot/overlays
+* dtoverlay=sdcan-can0,oscillator=16000000,interrupt=25 
+
 # Useful
 
 * sudo raspi-config (to enable SPI)
 * apt install hdparm
-* curl https://www.nmacleod.com/public/sdbench.sh | sudo bash
+* curl http://www.nmacleod.com/public/sdbench.sh | sudo bash

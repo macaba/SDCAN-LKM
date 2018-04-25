@@ -159,4 +159,12 @@ static const struct net_device_ops sdcan_netdev_ops = {
 	.ndo_change_mtu = can_change_mtu
 };
 
+static const struct of_device_id sdcan_of_match[] = {
+	{
+		.compatible	= "sdcan",
+		.data		= (void *)0x0000,
+	}
+	{ }
+};
+MODULE_DEVICE_TABLE(of, sdcan_of_match);
 
