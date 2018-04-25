@@ -193,6 +193,12 @@ static int sdcan_open(struct net_device *net){
 	return 0;
 }
 
+static int sdcan_hw_probe(struct spi_device *spi)
+{
+	/* Check for power up default value */
+	return 0;
+}
+
 static int sdcan_power_enable(struct regulator *reg, int enable)
 {
 	if (IS_ERR_OR_NULL(reg))
@@ -207,6 +213,11 @@ static int sdcan_power_enable(struct regulator *reg, int enable)
 static int sdcan_stop(struct net_device *net){
 	printk(KERN_INFO "SDCAN Stop\n");
 	return 0;
+}
+
+static void sdcan_hw_sleep(struct spi_device *spi)		//Puts the SDCAN uC to sleep?
+{
+	//sdcan_write_reg(spi, CANCTRL, CANCTRL_REQOP_SLEEP);
 }
 
 static netdev_tx_t sdcan_hard_start_xmit(struct sk_buff *skb, struct net_device *net){
