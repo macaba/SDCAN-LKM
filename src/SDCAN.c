@@ -299,11 +299,11 @@ static void sdcan_hw_sleep(struct spi_device *spi)		//Puts the SDCAN uC to sleep
 }
 
 static netdev_tx_t sdcan_hard_start_xmit(struct sk_buff *skb, struct net_device *net){
-	printk(KERN_INFO "SDCAN Hard Start Transmit\n");
-	
 	struct sdcan_priv *priv = netdev_priv(net);
 	struct spi_device *spi = priv->spi;
 
+	printk(KERN_INFO "SDCAN Hard Start Transmit\n");
+	
 	if (priv->tx_skb || priv->tx_len) {
 		dev_warn(&spi->dev, "hard_xmit called while tx busy\n");
 		return NETDEV_TX_BUSY;
