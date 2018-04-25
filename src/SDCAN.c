@@ -106,8 +106,8 @@ static void sdcan_hw_tx_frame(struct spi_device *spi, u8 *buf,
 {
 	struct sdcan_priv *priv = spi_get_drvdata(spi);
 
-	memcpy(priv->spi_tx_buf, buf, TXBDAT_OFF + len);
-	sdcan_spi_trans(spi, TXBDAT_OFF + len);
+	memcpy(priv->spi_tx_buf, buf, len);
+	sdcan_spi_trans(spi, len);
 }
 
 // static void sdcan_hw_tx(struct spi_device *spi, struct can_frame *frame,
