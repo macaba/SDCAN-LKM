@@ -85,6 +85,20 @@ struct sdcan_priv {
 	struct clk *clk;
 };
 
+static void sdcan_clean(struct net_device *net)
+{
+	struct sdcan_priv *priv = netdev_priv(net);
+
+	if (priv->tx_skb || priv->tx_len)
+		net->stats.tx_errors++;
+	if (priv->tx_skb)
+		dev_kfree_skb(priv->tx_skb);
+	if (priv->tx_len)
+		can_free_echo_skb(priv->net, 0);
+	priv->tx_skb = NULL;
+	priv->tx_len = 0;
+}
+
 static int sdcan_spi_trans(struct spi_device *spi, int len)
 {
 	struct sdcan_priv *priv = spi_get_drvdata(spi);
@@ -290,10 +304,7 @@ static int sdcan_can_probe(struct spi_device *spi)
 
 	/* Configure the SPI bus */
 	spi->bits_per_word = 8;
-	if (sdcan_is_2510(spi))
-		spi->max_speed_hz = spi->max_speed_hz ? : 5 * 1000 * 1000;
-	else
-		spi->max_speed_hz = spi->max_speed_hz ? : 10 * 1000 * 1000;
+	spi->max_speed_hz = spi->max_speed_hz ? : 10 * 1000 * 1000;
 	ret = spi_setup(spi);
 	if (ret)
 		goto out_clk;
