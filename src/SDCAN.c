@@ -210,7 +210,6 @@ static void sdcan_hw_tx_frame(struct spi_device *spi, u8 *buf,
 static void sdcan_hw_tx(struct spi_device *spi, struct can_frame *frame,
 			  int tx_buf_idx)
 {
-	struct sdcan_priv *priv = spi_get_drvdata(spi);
 	u32 sid, eid, exide, rtr;
 	u8 buf[SPI_TRANSFER_BUF_LEN];		//6 bytes + data
 
@@ -294,8 +293,50 @@ static void sdcan_hw_rx(struct spi_device *spi, int buf_idx)
 	netif_rx_ni(skb);
 }
 
-static int sdcan_open(struct net_device *net){
-	printk(KERN_INFO "SDCAN Open\n");
+static void sdcan_hw_sleep(struct spi_device *spi)		//Puts the SDCAN uC to sleep?
+{
+	//sdcan_write_reg(spi, CANCTRL, CANCTRL_REQOP_SLEEP);
+}
+
+static netdev_tx_t sdcan_hard_start_xmit(struct sk_buff *skb, struct net_device *net){
+	printk(KERN_INFO "SDCAN Hard Start Transmit\n");
+	
+	struct sdcan_priv *priv = netdev_priv(net);
+	struct spi_device *spi = priv->spi;
+
+	if (priv->tx_skb || priv->tx_len) {
+		dev_warn(&spi->dev, "hard_xmit called while tx busy\n");
+		return NETDEV_TX_BUSY;
+	}
+
+	if (can_dropped_invalid_skb(net, skb))
+		return NETDEV_TX_OK;
+
+	netif_stop_queue(net);
+	priv->tx_skb = skb;
+	queue_work(priv->wq, &priv->tx_work);
+
+	return NETDEV_TX_OK;
+}
+
+static int sdcan_do_set_mode(struct net_device *net, enum can_mode mode)
+{
+	struct sdcan_priv *priv = netdev_priv(net);
+
+	switch (mode) {
+	case CAN_MODE_START:
+		sdcan_clean(net);
+		/* We have to delay work since SPI I/O may sleep */
+		priv->can.state = CAN_STATE_ERROR_ACTIVE;
+		priv->restart_tx = 1;
+		if (priv->can.restart_ms == 0)
+			priv->after_suspend = AFTER_SUSPEND_RESTART;
+		queue_work(priv->wq, &priv->restart_work);
+		break;
+	default:
+		return -EOPNOTSUPP;
+	}
+
 	return 0;
 }
 
@@ -321,34 +362,8 @@ static int sdcan_stop(struct net_device *net){
 	return 0;
 }
 
-static void sdcan_hw_sleep(struct spi_device *spi)		//Puts the SDCAN uC to sleep?
-{
-	//sdcan_write_reg(spi, CANCTRL, CANCTRL_REQOP_SLEEP);
-}
-
-static netdev_tx_t sdcan_hard_start_xmit(struct sk_buff *skb, struct net_device *net){
-	printk(KERN_INFO "SDCAN Hard Start Transmit\n");
-	return NETDEV_TX_OK;	
-}
-
-static int sdcan_do_set_mode(struct net_device *net, enum can_mode mode)
-{
-	struct sdcan_priv *priv = netdev_priv(net);
-
-	switch (mode) {
-	case CAN_MODE_START:
-		sdcan_clean(net);
-		/* We have to delay work since SPI I/O may sleep */
-		priv->can.state = CAN_STATE_ERROR_ACTIVE;
-		priv->restart_tx = 1;
-		if (priv->can.restart_ms == 0)
-			priv->after_suspend = AFTER_SUSPEND_RESTART;
-		queue_work(priv->wq, &priv->restart_work);
-		break;
-	default:
-		return -EOPNOTSUPP;
-	}
-
+static int sdcan_open(struct net_device *net){
+	printk(KERN_INFO "SDCAN Open\n");
 	return 0;
 }
 
