@@ -21,17 +21,27 @@
 #include <linux/uaccess.h>
 #include <linux/regulator/consumer.h>
 
-#define DEVICE_NAME "sdcan"
+/* SDCAN registers */
+#define TXBSIDH_OFF 1
+#define TXBSIDL_OFF 2
+#define TXBEID8_OFF 3
+#define TXBEID0_OFF 4
+#define TXBDLC_OFF  5
+#define TXBDAT_OFF  6
+
+#define RXBSIDH_OFF 1
+#define RXBSIDL_OFF 2
+#define RXBEID8_OFF 3
+#define RXBEID0_OFF 4
+#define RXBDLC_OFF  5
+#define RXBDAT_OFF  6
 
 #define CAN_FRAME_MAX_DATA_LEN	8
 #define SPI_TRANSFER_BUF_LEN	(6 + CAN_FRAME_MAX_DATA_LEN)
 
 #define TX_ECHO_SKB_MAX	1
 
-MODULE_LICENSE("GPL");              ///< The license type -- this affects runtime behavior
-MODULE_AUTHOR("");                  ///< The author -- visible when you use modinfo
-MODULE_DESCRIPTION("SDCAN - Software Defined CAN");  ///< The description -- see modinfo
-MODULE_VERSION("0.1");              ///< The version of the module
+#define DEVICE_NAME "sdcan"
 
 static int sdcan_enable_dma; /* Enable SPI DMA. Default: 0 (Off) */
 module_param(sdcan_enable_dma, int, 0444);
@@ -99,6 +109,19 @@ static void sdcan_clean(struct net_device *net)
 	priv->tx_len = 0;
 }
 
+/*
+ * Note about handling of error return of sdcan_spi_trans: accessing
+ * registers via SPI is not really different conceptually than using
+ * normal I/O assembler instructions, although it's much more
+ * complicated from a practical POV. So it's not advisable to always
+ * check the return value of this function. Imagine that every
+ * read{b,l}, write{b,l} and friends would be bracketed in "if ( < 0)
+ * error();", it would be a great mess (well there are some situation
+ * when exception handling C++ like could be useful after all). So we
+ * just check that transfers are OK at the beginning of our
+ * conversation with the chip and to avoid doing really nasty things
+ * (like injecting bogus packets in the network stack).
+ */
 static int sdcan_spi_trans(struct spi_device *spi, int len)
 {
 	struct sdcan_priv *priv = spi_get_drvdata(spi);
@@ -161,32 +184,92 @@ static void sdcan_hw_tx_frame(struct spi_device *spi, u8 *buf,
 	sdcan_spi_trans(spi, len);
 }
 
-// static void sdcan_hw_tx(struct spi_device *spi, struct can_frame *frame,
-// 			  int tx_buf_idx)
-// {
-// 	struct sdcan_priv *priv = spi_get_drvdata(spi);
-// 	u32 sid, eid, exide, rtr;
-// 	u8 buf[SPI_TRANSFER_BUF_LEN];
+static void sdcan_hw_tx(struct spi_device *spi, struct can_frame *frame,
+			  int tx_buf_idx)
+{
+	struct sdcan_priv *priv = spi_get_drvdata(spi);
+	u32 sid, eid, exide, rtr;
+	u8 buf[SPI_TRANSFER_BUF_LEN];		//6 bytes + data
 
-// 	exide = (frame->can_id & CAN_EFF_FLAG) ? 1 : 0; /* Extended ID Enable */
-// 	if (exide)
-// 		sid = (frame->can_id & CAN_EFF_MASK) >> 18;
-// 	else
-// 		sid = frame->can_id & CAN_SFF_MASK; /* Standard ID */
-// 	eid = frame->can_id & CAN_EFF_MASK; /* Extended ID */
-// 	rtr = (frame->can_id & CAN_RTR_FLAG) ? 1 : 0; /* Remote transmission */
+	exide = (frame->can_id & CAN_EFF_FLAG) ? 1 : 0; /* Extended ID Enable */
+	if (exide)
+		sid = (frame->can_id & CAN_EFF_MASK) >> 18;
+	else
+		sid = frame->can_id & CAN_SFF_MASK; /* Standard ID */
+	eid = frame->can_id & CAN_EFF_MASK; /* Extended ID */
+	rtr = (frame->can_id & CAN_RTR_FLAG) ? 1 : 0; /* Remote transmission */
 
-// 	//buf[TXBCTRL_OFF] = INSTRUCTION_LOAD_TXB(tx_buf_idx);
-// 	buf[TXBSIDH_OFF] = sid >> SIDH_SHIFT;
-// 	buf[TXBSIDL_OFF] = ((sid & SIDL_SID_MASK) << SIDL_SID_SHIFT) |
-// 		(exide << SIDL_EXIDE_SHIFT) |
-// 		((eid >> SIDL_EID_SHIFT) & SIDL_EID_MASK);
-// 	buf[TXBEID8_OFF] = GET_BYTE(eid, 1);
-// 	buf[TXBEID0_OFF] = GET_BYTE(eid, 0);
-// 	buf[TXBDLC_OFF] = (rtr << DLC_RTR_SHIFT) | frame->can_dlc;
-// 	memcpy(buf + TXBDAT_OFF, frame->data, frame->can_dlc);
-// 	sdcan_hw_tx_frame(spi, buf, frame->can_dlc, tx_buf_idx);
-// }
+	//buf[TXBCTRL_OFF] = INSTRUCTION_LOAD_TXB(tx_buf_idx);
+	buf[0] = 0x00;		//Not using this byte for now, fix this later
+	buf[TXBSIDH_OFF] = sid >> SIDH_SHIFT;
+	buf[TXBSIDL_OFF] = ((sid & SIDL_SID_MASK) << SIDL_SID_SHIFT) |
+		(exide << SIDL_EXIDE_SHIFT) |
+		((eid >> SIDL_EID_SHIFT) & SIDL_EID_MASK);
+	buf[TXBEID8_OFF] = GET_BYTE(eid, 1);
+	buf[TXBEID0_OFF] = GET_BYTE(eid, 0);
+	buf[TXBDLC_OFF] = (rtr << DLC_RTR_SHIFT) | frame->can_dlc;
+	memcpy(buf + TXBDAT_OFF, frame->data, frame->can_dlc);
+	sdcan_hw_tx_frame(spi, buf, frame->can_dlc, tx_buf_idx);
+}
+
+static void sdcan_hw_rx_frame(struct spi_device *spi, u8 *buf,
+				int buf_idx)
+{
+	struct sdcan_priv *priv = spi_get_drvdata(spi);
+
+	//priv->spi_tx_buf[RXBCTRL_OFF] = INSTRUCTION_READ_RXB(buf_idx);
+	sdcan_spi_trans(spi, SPI_TRANSFER_BUF_LEN);
+	memcpy(buf, priv->spi_rx_buf, SPI_TRANSFER_BUF_LEN);
+}
+
+static void sdcan_hw_rx(struct spi_device *spi, int buf_idx)
+{
+	struct sdcan_priv *priv = spi_get_drvdata(spi);
+	struct sk_buff *skb;
+	struct can_frame *frame;
+	u8 buf[SPI_TRANSFER_BUF_LEN];
+
+	skb = alloc_can_skb(priv->net, &frame);
+	if (!skb) {
+		dev_err(&spi->dev, "cannot allocate RX skb\n");
+		priv->net->stats.rx_dropped++;
+		return;
+	}
+
+	sdcan_hw_rx_frame(spi, buf, buf_idx);
+	if (buf[RXBSIDL_OFF] & RXBSIDL_IDE) {
+		/* Extended ID format */
+		frame->can_id = CAN_EFF_FLAG;
+		frame->can_id |=
+			/* Extended ID part */
+			SET_BYTE(buf[RXBSIDL_OFF] & RXBSIDL_EID, 2) |
+			SET_BYTE(buf[RXBEID8_OFF], 1) |
+			SET_BYTE(buf[RXBEID0_OFF], 0) |
+			/* Standard ID part */
+			(((buf[RXBSIDH_OFF] << RXBSIDH_SHIFT) |
+			  (buf[RXBSIDL_OFF] >> RXBSIDL_SHIFT)) << 18);
+		/* Remote transmission request */
+		if (buf[RXBDLC_OFF] & RXBDLC_RTR)
+			frame->can_id |= CAN_RTR_FLAG;
+	} else {
+		/* Standard ID format */
+		frame->can_id =
+			(buf[RXBSIDH_OFF] << RXBSIDH_SHIFT) |
+			(buf[RXBSIDL_OFF] >> RXBSIDL_SHIFT);
+		if (buf[RXBSIDL_OFF] & RXBSIDL_SRR)
+			frame->can_id |= CAN_RTR_FLAG;
+	}
+	/* Data length */
+	frame->can_dlc = get_can_dlc(buf[RXBDLC_OFF] & RXBDLC_LEN_MASK);
+	memcpy(frame->data, buf + RXBDAT_OFF, frame->can_dlc);
+
+	priv->net->stats.rx_packets++;
+	priv->net->stats.rx_bytes += frame->can_dlc;
+
+	can_led_event(priv->net, CAN_LED_EVENT_RX);
+
+	netif_rx_ni(skb);
+}
 
 static int sdcan_open(struct net_device *net){
 	printk(KERN_INFO "SDCAN Open\n");
@@ -460,7 +543,7 @@ static int __maybe_unused sdcan_can_suspend(struct device *dev)
 	}
 
 	if (!IS_ERR_OR_NULL(priv->power)) {
-		regulator_disable(priv->power);
+		sdcan_power_enable(priv->power, 0);
 		priv->after_suspend |= AFTER_SUSPEND_POWER;
 	}
 
@@ -473,10 +556,10 @@ static int __maybe_unused sdcan_can_resume(struct device *dev)
 	struct sdcan_priv *priv = spi_get_drvdata(spi);
 
 	if (priv->after_suspend & AFTER_SUSPEND_POWER)
-		sdcan_power_enable(priv->power, 1);
+		sdcan_power_enable(priv->power, 1);				//Enables the SDCAN uC (in theory)
 
 	if (priv->after_suspend & AFTER_SUSPEND_UP) {
-		sdcan_power_enable(priv->transceiver, 1);
+		sdcan_power_enable(priv->transceiver, 1);		//Enables the transceiver IC (in theory)
 		queue_work(priv->wq, &priv->restart_work);
 	} else {
 		priv->after_suspend = 0;
@@ -502,3 +585,7 @@ static struct spi_driver sdcan_can_driver = {
 };
 module_spi_driver(sdcan_can_driver);
 
+MODULE_LICENSE("GPL");              ///< The license type -- this affects runtime behavior
+MODULE_AUTHOR("");                  ///< The author -- visible when you use modinfo
+MODULE_DESCRIPTION("SDCAN - Software Defined CAN");  ///< The description -- see modinfo
+MODULE_VERSION("0.1");              ///< The version of the module
