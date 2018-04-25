@@ -22,6 +22,13 @@
 #include <linux/regulator/consumer.h>
 
 /* SDCAN registers */
+#  define SIDH_SHIFT    3
+#  define SIDL_SID_MASK    7
+#  define SIDL_SID_SHIFT   5
+#  define SIDL_EXIDE_SHIFT 3
+#  define SIDL_EID_SHIFT   16
+#  define SIDL_EID_MASK    3
+
 #define TXBSIDH_OFF 1
 #define TXBSIDL_OFF 2
 #define TXBEID8_OFF 3
@@ -35,6 +42,9 @@
 #define RXBEID0_OFF 4
 #define RXBDLC_OFF  5
 #define RXBDAT_OFF  6
+
+#  define RXBSIDH_SHIFT 3
+#  define RXBSIDL_SHIFT 5
 
 #define CAN_FRAME_MAX_DATA_LEN	8
 #define SPI_TRANSFER_BUF_LEN	(6 + CAN_FRAME_MAX_DATA_LEN)
