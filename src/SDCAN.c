@@ -37,11 +37,15 @@ static int sdcan_enable_dma; /* Enable SPI DMA. Default: 0 (Off) */
 module_param(sdcan_enable_dma, int, 0444);
 MODULE_PARM_DESC(sdcan_enable_dma, "Enable SPI DMA. Default: 0 (Off)");
 
+enum sdcan_model {
+	CAN_sdcan_1	= 0x0001
+};
+
 struct sdcan_priv {
 	struct can_priv	   can;
 	struct net_device *net;
 	struct spi_device *spi;
-	//enum sdcan_model model;
+	enum sdcan_model model;
 
 	struct mutex sdcan_lock; /* SPI device lock */
 
@@ -57,16 +61,16 @@ struct sdcan_priv {
 	struct work_struct tx_work;
 	struct work_struct restart_work;
 
-// 	int force_quit;
-// 	int after_suspend;
-// #define AFTER_SUSPEND_UP 1
-// #define AFTER_SUSPEND_DOWN 2
-// #define AFTER_SUSPEND_POWER 4
-// #define AFTER_SUSPEND_RESTART 8
-// 	int restart_tx;
-// 	struct regulator *power;
-// 	struct regulator *transceiver;
-// 	struct clk *clk;
+	int force_quit;
+	int after_suspend;
+#define AFTER_SUSPEND_UP 1
+#define AFTER_SUSPEND_DOWN 2
+#define AFTER_SUSPEND_POWER 4
+#define AFTER_SUSPEND_RESTART 8
+	int restart_tx;
+	struct regulator *power;
+	struct regulator *transceiver;
+	struct clk *clk;
 };
 
 static int sdcan_spi_trans(struct spi_device *spi, int len)
@@ -183,7 +187,7 @@ static const struct net_device_ops sdcan_netdev_ops = {
 static const struct of_device_id sdcan_of_match[] = {
 	{
 		.compatible	= "sdcan",
-		.data		= (void *)0x0744,
+		.data		= (void *)CAN_sdcan_1,
 	},
 	{ }
 };
@@ -192,7 +196,7 @@ MODULE_DEVICE_TABLE(of, sdcan_of_match);
 static const struct spi_device_id sdcan_id_table[] = {
 	{
 		.name		= "sdcan",
-		.driver_data	= (kernel_ulong_t)0x0744,
+		.driver_data	= (kernel_ulong_t)CAN_sdcan_1,
 	},
 	{ }
 };
