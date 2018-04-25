@@ -19,7 +19,13 @@ Software Defined CAN - Loadable [Linux] Kernel Module for Raspberry Pi
 
 * dtc -@ -I dts -O dtb -o sdcan-can0.dtbo sdcan-can0-overlay.dts
 * sudo cp sdcan-can0.dtbo /boot/overlays
-* dtoverlay=sdcan-can0,oscillator=16000000,interrupt=25 
+* dtoverlay=sdcan-can0,oscillator=16000000,interrupt=25
+* sudo cp SDCAN.ko /lib/modules/`uname -r`/kernel/drivers/net/can/spi
+* sudo depmod -a
+* sudo modprobe SDCAN
+* sudo vim /etc/modules
+* ls /sys/bus/spi/devices/spi0.0/net/can0/
+* sudo /sbin/ip link set can0 up type can bitrate 500000
 
 # Useful
 
