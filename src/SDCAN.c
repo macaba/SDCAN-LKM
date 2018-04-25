@@ -36,18 +36,19 @@
 #define TXBDLC_OFF  5
 #define TXBDAT_OFF  6
 
+#  define RXBSIDH_SHIFT 3
+#  define RXBSIDL_IDE   0x08
+#  define RXBSIDL_SRR   0x10
+#  define RXBSIDL_EID   3
+#  define RXBSIDL_SHIFT 5
+#  define RXBDLC_LEN_MASK  0x0f
+#  define RXBDLC_RTR       0x40
 #define RXBSIDH_OFF 1
 #define RXBSIDL_OFF 2
 #define RXBEID8_OFF 3
 #define RXBEID0_OFF 4
 #define RXBDLC_OFF  5
 #define RXBDAT_OFF  6
-
-#  define RXBSIDH_SHIFT 3
-#  define RXBSIDL_IDE   0x08
-#  define RXBSIDL_SRR   0x10
-#  define RXBSIDL_EID   3
-#  define RXBSIDL_SHIFT 5
 
 #define GET_BYTE(val, byte)			\
 	(((val) >> ((byte) * 8)) & 0xff)
