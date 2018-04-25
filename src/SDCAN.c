@@ -28,7 +28,7 @@
 #  define SIDL_EXIDE_SHIFT 3
 #  define SIDL_EID_SHIFT   16
 #  define SIDL_EID_MASK    3
-
+#  define DLC_RTR_SHIFT    6
 #define TXBSIDH_OFF 1
 #define TXBSIDL_OFF 2
 #define TXBEID8_OFF 3
@@ -44,8 +44,20 @@
 #define RXBDAT_OFF  6
 
 #  define RXBSIDH_SHIFT 3
+#  define RXBSIDL_IDE   0x08
+#  define RXBSIDL_SRR   0x10
+#  define RXBSIDL_EID   3
 #  define RXBSIDL_SHIFT 5
 
+#define GET_BYTE(val, byte)			\
+	(((val) >> ((byte) * 8)) & 0xff)
+#define SET_BYTE(val, byte)			\
+	(((val) & 0xff) << ((byte) * 8))
+
+/*
+ * Buffer size required for the largest SPI transfer (i.e., reading a
+ * frame)
+ */
 #define CAN_FRAME_MAX_DATA_LEN	8
 #define SPI_TRANSFER_BUF_LEN	(6 + CAN_FRAME_MAX_DATA_LEN)
 
