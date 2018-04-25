@@ -439,51 +439,51 @@ static int sdcan_can_remove(struct spi_device *spi)
 
 static int __maybe_unused sdcan_can_suspend(struct device *dev)
 {
-	// struct spi_device *spi = to_spi_device(dev);
-	// struct sdcan_priv *priv = spi_get_drvdata(spi);
-	// struct net_device *net = priv->net;
+	struct spi_device *spi = to_spi_device(dev);
+	struct sdcan_priv *priv = spi_get_drvdata(spi);
+	struct net_device *net = priv->net;
 
-	// priv->force_quit = 1;
-	// disable_irq(spi->irq);
-	// /*
-	//  * Note: at this point neither IST nor workqueues are running.
-	//  * open/stop cannot be called anyway so locking is not needed
-	//  */
-	// if (netif_running(net)) {
-	// 	netif_device_detach(net);
+	priv->force_quit = 1;
+	disable_irq(spi->irq);
+	/*
+	 * Note: at this point neither IST nor workqueues are running.
+	 * open/stop cannot be called anyway so locking is not needed
+	 */
+	if (netif_running(net)) {
+		netif_device_detach(net);
 
-	// 	sdcan_hw_sleep(spi);
-	// 	sdcan_power_enable(priv->transceiver, 0);
-	// 	priv->after_suspend = AFTER_SUSPEND_UP;
-	// } else {
-	// 	priv->after_suspend = AFTER_SUSPEND_DOWN;
-	// }
+		sdcan_hw_sleep(spi);
+		sdcan_power_enable(priv->transceiver, 0);
+		priv->after_suspend = AFTER_SUSPEND_UP;
+	} else {
+		priv->after_suspend = AFTER_SUSPEND_DOWN;
+	}
 
-	// if (!IS_ERR_OR_NULL(priv->power)) {
-	// 	regulator_disable(priv->power);
-	// 	priv->after_suspend |= AFTER_SUSPEND_POWER;
-	// }
+	if (!IS_ERR_OR_NULL(priv->power)) {
+		regulator_disable(priv->power);
+		priv->after_suspend |= AFTER_SUSPEND_POWER;
+	}
 
 	return 0;
 }
 
 static int __maybe_unused sdcan_can_resume(struct device *dev)
 {
-	// struct spi_device *spi = to_spi_device(dev);
-	// struct sdcan_priv *priv = spi_get_drvdata(spi);
+	struct spi_device *spi = to_spi_device(dev);
+	struct sdcan_priv *priv = spi_get_drvdata(spi);
 
-	// if (priv->after_suspend & AFTER_SUSPEND_POWER)
-	// 	sdcan_power_enable(priv->power, 1);
+	if (priv->after_suspend & AFTER_SUSPEND_POWER)
+		sdcan_power_enable(priv->power, 1);
 
-	// if (priv->after_suspend & AFTER_SUSPEND_UP) {
-	// 	sdcan_power_enable(priv->transceiver, 1);
-	// 	queue_work(priv->wq, &priv->restart_work);
-	// } else {
-	// 	priv->after_suspend = 0;
-	// }
+	if (priv->after_suspend & AFTER_SUSPEND_UP) {
+		sdcan_power_enable(priv->transceiver, 1);
+		queue_work(priv->wq, &priv->restart_work);
+	} else {
+		priv->after_suspend = 0;
+	}
 
-	// priv->force_quit = 0;
-	// enable_irq(spi->irq);
+	priv->force_quit = 0;
+	enable_irq(spi->irq);
 	return 0;
 }
 

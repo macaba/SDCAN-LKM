@@ -28,6 +28,7 @@ Software Defined CAN - Loadable [Linux] Kernel Module for Raspberry Pi
 * sudo /sbin/ip link set can0 up type can bitrate 500000
 
 * /var/log/syslog
+* dmesg | grep sdcan
 
 # Useful
 
