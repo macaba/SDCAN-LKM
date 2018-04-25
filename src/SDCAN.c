@@ -37,6 +37,18 @@ static int sdcan_enable_dma; /* Enable SPI DMA. Default: 0 (Off) */
 module_param(sdcan_enable_dma, int, 0444);
 MODULE_PARM_DESC(sdcan_enable_dma, "Enable SPI DMA. Default: 0 (Off)");
 
+static const struct can_bittiming_const sdcan_bittiming_const = {
+	.name = DEVICE_NAME,
+	.tseg1_min = 3,
+	.tseg1_max = 16,
+	.tseg2_min = 2,
+	.tseg2_max = 8,
+	.sjw_max = 4,
+	.brp_min = 1,
+	.brp_max = 64,
+	.brp_inc = 1,
+};
+
 enum sdcan_model {
 	CAN_sdcan_1	= 0x0001
 };
@@ -175,6 +187,27 @@ static int sdcan_stop(struct net_device *net){
 static netdev_tx_t sdcan_hard_start_xmit(struct sk_buff *skb, struct net_device *net){
 	printk(KERN_INFO "SDCAN Hard Start Transmit\n");
 	return NETDEV_TX_OK;	
+}
+
+static int sdcan_do_set_mode(struct net_device *net, enum can_mode mode)
+{
+	struct sdcan_priv *priv = netdev_priv(net);
+
+	switch (mode) {
+	case CAN_MODE_START:
+		sdcan_clean(net);
+		/* We have to delay work since SPI I/O may sleep */
+		priv->can.state = CAN_STATE_ERROR_ACTIVE;
+		priv->restart_tx = 1;
+		if (priv->can.restart_ms == 0)
+			priv->after_suspend = AFTER_SUSPEND_RESTART;
+		queue_work(priv->wq, &priv->restart_work);
+		break;
+	default:
+		return -EOPNOTSUPP;
+	}
+
+	return 0;
 }
 
 static const struct net_device_ops sdcan_netdev_ops = {
