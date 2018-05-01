@@ -191,7 +191,7 @@ static void sdcan_write_reg(struct spi_device *spi, u8 reg, uint8_t val)
 {
 	struct sdcan_priv *priv = spi_get_drvdata(spi);
 
-	//priv->spi_tx_buf[0] = INSTRUCTION_WRITE;
+	priv->spi_tx_buf[0] = 0x00;//INSTRUCTION_WRITE;
 	priv->spi_tx_buf[1] = reg;
 	priv->spi_tx_buf[2] = val;
 
@@ -357,13 +357,18 @@ static int sdcan_power_enable(struct regulator *reg, int enable)
 		return regulator_disable(reg);
 }
 
-static int sdcan_stop(struct net_device *net){
+static int sdcan_stop(struct net_device *net) {
 	printk(KERN_INFO "SDCAN Stop\n");
 	return 0;
 }
 
-static int sdcan_open(struct net_device *net){
+static int sdcan_open(struct net_device *net) {
 	printk(KERN_INFO "SDCAN Open\n");
+
+	struct sdcan_priv *priv = netdev_priv(net);
+	struct spi_device *spi = priv->spi;
+
+	sdcan_write_reg(spi, 0xAA, 0x0F);
 	return 0;
 }
 
@@ -608,8 +613,7 @@ static int __maybe_unused sdcan_can_resume(struct device *dev)
 	return 0;
 }
 
-static SIMPLE_DEV_PM_OPS(sdcan_can_pm_ops, sdcan_can_suspend,
-	sdcan_can_resume);
+static SIMPLE_DEV_PM_OPS(sdcan_can_pm_ops, sdcan_can_suspend, sdcan_can_resume);
 
 static struct spi_driver sdcan_can_driver = {
 	.driver = {
